@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SH Levante · Consulta de reparto</title>
+<style>
+:root{--bg:#f4f7f6;--card:#fff;--text:#17231d;--muted:#6b756f;--green:#1f7a4d;--green2:#155c39;--line:#dfe6e1;--red:#b42318;--amber:#a15c00}
+*{box-sizing:border-box} body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text)}
+header{background:#fff;border-bottom:1px solid var(--line);padding:16px 20px;position:sticky;top:0;z-index:10}
+.bar{max-width:1000px;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.brand{font-weight:900;letter-spacing:.05em} .brand span{color:var(--green)} .pill{font-size:12px;padding:6px 10px;border-radius:999px;background:#edf7f1;color:var(--green);font-weight:700}
+main{max-width:1000px;margin:36px auto;padding:0 18px} .hero{text-align:center;margin-bottom:22px}
+h1{font-size:clamp(30px,5vw,48px);margin:0 0 8px} .sub{color:var(--muted)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:20px;box-shadow:0 10px 30px rgba(0,0,0,.04)}
+.searchrow{display:flex;gap:10px;flex-wrap:wrap} input,select{width:100%;padding:14px 15px;border:1.5px solid var(--line);border-radius:12px;font-size:16px;outline:none;background:#fff}
+input:focus,select:focus{border-color:var(--green)} .searchrow input{flex:1 1 260px;font-size:21px;text-transform:uppercase}
+button{border:0;border-radius:12px;padding:14px 18px;font-weight:800;cursor:pointer;font-size:15px} .primary{background:var(--green);color:#fff} .primary:hover{background:var(--green2)} .secondary{background:#eef2ef;color:var(--text)} .danger{background:#fff1f0;color:var(--red)}
+.result{display:none;margin-top:18px;padding:20px;border-radius:16px;border:1px solid var(--line)} .code{color:var(--muted);font-size:13px;font-weight:800;letter-spacing:.08em}
+.client{font-size:27px;font-weight:900;margin:5px 0 16px} .days{font-size:38px;color:var(--green);font-weight:900} .route{margin-top:7px;font-weight:800}
+.error{color:var(--red);font-weight:800} .admin-link{margin-top:18px;text-align:center} .linkbtn{background:none;color:var(--green);padding:8px}
+.admin{display:none;margin-top:25px} .grid{display:grid;grid-template-columns:1fr 2fr 1fr 1fr;gap:10px} .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+table{width:100%;border-collapse:collapse;margin-top:18px} th,td{text-align:left;padding:10px;border-bottom:1px solid var(--line);font-size:14px} th{color:var(--muted);font-size:12px;text-transform:uppercase}
+.small{font-size:12px;color:var(--muted)} .status{margin-top:10px;font-size:13px;color:var(--muted)} .login{display:grid;grid-template-columns:1fr 1fr auto;gap:10px}
+@media(max-width:750px){.grid,.login{grid-template-columns:1fr} table{font-size:12px} th:nth-child(2),td:nth-child(2){max-width:160px}}
+</style>
+</head>
+<body>
+<header><div class="bar"><div class="brand"><span>SH</span> LEVANTE · REPARTOS</div><div id="modePill" class="pill">Modo local</div></div></header>
+<main>
+  <section class="hero"><h1>¿Cuándo se reparte?</h1><div class="sub">Introduce el código de cliente.</div></section>
+  <section class="card">
+    <div class="searchrow"><input id="searchCode" placeholder="Ej. C852" autocomplete="off"><button class="primary" id="searchBtn">Buscar</button></div>
+    <div id="result" class="result"></div>
+    <div class="admin-link"><button class="linkbtn" id="toggleAdmin">Administrar repartos</button></div>
+  </section>
+
+  <section id="admin" class="admin card">
+    <h2 style="margin-top:0">Administración</h2>
+    <div id="loginBox">
+      <div class="login">
+        <input id="email" type="email" placeholder="Email administrador">
+        <input id="password" type="password" placeholder="Contraseña">
+        <button class="primary" id="loginBtn">Entrar</button>
+      </div>
+      <div class="small" style="margin-top:8px">Con Supabase configurado, solo usuarios autenticados pueden modificar datos. En modo local, los cambios se guardan solo en este navegador.</div>
+    </div>
+    <div id="editor" style="display:none">
+      <div class="grid">
+        <input id="fCode" placeholder="Código">
+        <input id="fName" placeholder="Cliente">
+        <input id="fDays" placeholder="Días (L-X, M-J...)">
+        <input id="fRoute" placeholder="Ruta opcional">
+      </div>
+      <div class="actions">
+        <button class="primary" id="saveBtn">Guardar</button>
+        <button class="secondary" id="clearBtn">Nuevo</button>
+        <button class="danger" id="deleteBtn">Eliminar</button>
+        <button class="secondary" id="logoutBtn">Salir</button>
+      </div>
+      <div id="status" class="status"></div>
+      <div style="overflow:auto"><table><thead><tr><th>Código</th><th>Cliente</th><th>Días</th><th>Ruta</th></tr></thead><tbody id="tbody"></tbody></table></div>
+    </div>
+  </section>
+</main>
+
+<script type="module">
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+const SEED = [{"code": "C831", "name": "BP CASTELLÓN", "days": "L-X", "route": ""}, {"code": "C832", "name": "DANONE ALDAYA", "days": "L-J", "route": ""}, {"code": "C833", "name": "COCA´COLA QUART DE POBLET", "days": "L-J", "route": ""}, {"code": "C834", "name": "ESMALGLASS VILLARREAL", "days": "L-X", "route": ""}, {"code": "C835", "name": "HEINEKEN QUART DE POBLET", "days": "L-J", "route": ""}, {"code": "C836", "name": "ITACA POBLA TORNESA", "days": "L-X", "route": ""}, {"code": "C837", "name": "YOUNEXA VALL D'ALBA", "days": "L-X", "route": ""}, {"code": "C838", "name": "AMAZON ONDA", "days": "L-X", "route": ""}, {"code": "C850", "name": "BALLESOL PATERNA", "days": "L-J", "route": ""}, {"code": "C851", "name": "BALLESOL SERRERIA", "days": "L-J", "route": ""}, {"code": "C852", "name": "MAKRO SAD ALCIRA", "days": "M-V", "route": "Ruta A5"}, {"code": "C853", "name": "CHECKIN ALAQUAS", "days": "M-V", "route": ""}, {"code": "C854", "name": "CHECKIN CISCAR PICANYA", "days": "M-V", "route": ""}, {"code": "C900", "name": "COLEGIO FUENTEBLANCA MURCIA", "days": "M-J", "route": ""}, {"code": "C901", "name": "C. E. CONCERT. SEVERO OCHOA", "days": "M-J", "route": ""}, {"code": "C902", "name": "LAS CLARAS DE LA FLOTA", "days": "M-J", "route": ""}, {"code": "C903", "name": "LAS CLARAS DEL MAR MENOR", "days": "M-J", "route": ""}, {"code": "C904", "name": "LICEO FRANCES MURCIA", "days": "M-J", "route": ""}, {"code": "C905", "name": "AMAZON RMU1", "days": "M-J", "route": ""}, {"code": "C906", "name": "BALLESOL MURCIA", "days": "M-J", "route": ""}, {"code": "C907", "name": "RESIDENCIA HOGAR DE BETANIA", "days": "M-J", "route": ""}, {"code": "C908", "name": "CASTILLO ROSA PEÑAS", "days": "M-J", "route": ""}, {"code": "C909", "name": "CASTILLO EL ALJIBE SANTOMERA", "days": "M-J", "route": ""}, {"code": "C910", "name": "COLEGIO RINCON DE BONANZA", "days": "M-J", "route": ""}, {"code": "C911", "name": "CEIP VIRGEN DE MONSERRATE", "days": "M-J", "route": ""}, {"code": "C912", "name": "CEIP NUESTRA SEÑORA DEL PILAR", "days": "M-J", "route": ""}, {"code": "C913", "name": "ASPANIAS | FUTURE FOLLOW-UP OP", "days": "M-J", "route": ""}, {"code": "C914", "name": "EL CASTILLO H.P.M. ALMENARA", "days": "M-J", "route": ""}, {"code": "C915", "name": "EUROPA HOUSE", "days": "M-J", "route": ""}, {"code": "C916", "name": "BALLESOL VILLAJOYOSA", "days": "M-J", "route": ""}, {"code": "C917", "name": "MORENICA VILLENA", "days": "M-J", "route": ""}, {"code": "C918", "name": "CASTILLO LAS VIRTUDES", "days": "M-J", "route": ""}, {"code": "C919", "name": "BALLESOL VIA PARQUE SAN JUAN", "days": "M-J", "route": ""}, {"code": "C920", "name": "BAKOUR LA MANGA SPLASH", "days": "M-J", "route": ""}, {"code": "C921", "name": "PROMETEO MURCIA", "days": "M-J", "route": ""}, {"code": "C922", "name": "B&B CC THADER", "days": "M-J", "route": ""}, {"code": "C923", "name": "RESIDENCIA MURO ALCOI", "days": "M-J", "route": ""}, {"code": "C924", "name": "EL MOLINO ALBACETE", "days": "L-M-V", "route": ""}, {"code": "C925", "name": "6 HERMANOS ALBACETE", "days": "L-M-V", "route": ""}, {"code": "C926", "name": "EL VOLANTE ALBACETE", "days": "L-M-V", "route": ""}, {"code": "C927", "name": "LOS GABRIELES ALBACETE", "days": "L-M-V", "route": ""}, {"code": "C928", "name": "EL JUANITO ALBACETE", "days": "L-M-V", "route": ""}, {"code": "C929", "name": "LA FLOR DE LA MANCHA ALBACETE", "days": "L-M-V", "route": ""}, {"code": "C930", "name": "LA LAGUNA ALBACETE", "days": "L-M-V", "route": ""}];
+let data = [];
+let supabase = null;
+let cloud = false;
+
+const $=id=>document.getElementById(id);
+const norm=s=>String(s||"").trim().toUpperCase().replace(/\s+/g,"");
+const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[m]));
+
+async function boot(){
+  try{
+    const cfg = await fetch("./config.json?ts="+Date.now()).then(r=>r.json());
+    if(cfg.supabaseUrl && cfg.supabaseAnonKey && !cfg.supabaseUrl.includes("PEGA_AQUI")){
+      supabase=createClient(cfg.supabaseUrl,cfg.supabaseAnonKey);
+      cloud=true;
+      $("modePill").textContent="Datos compartidos";
+      await loadCloud();
+      const {data:authData}=await supabase.auth.getSession();
+      if(authData.session) showEditor(true);
+      supabase.auth.onAuthStateChange((_e,s)=>showEditor(!!s));
+      return;
+    }
+  }catch(e){}
+  data=JSON.parse(localStorage.getItem("sh_routes")||"null")||SEED;
+  $("modePill").textContent="Modo local";
+  showEditor(true);
+  renderTable();
+}
+
+async function loadCloud(){
+  const {data:rows,error}=await supabase.from("delivery_routes").select("code,name,days,route").order("code");
+  if(error) return setStatus("Error cargando datos: "+error.message,true);
+  data=rows||[];
+  renderTable();
+}
+
+function search(){
+  const code=norm($("searchCode").value);
+  const r=$("result"); r.style.display="block";
+  if(!code) return r.innerHTML='<div class="error">Introduce un código.</div>';
+  const x=data.find(v=>norm(v.code)===code);
+  if(!x) return r.innerHTML=`<div class="code">${esc(code)}</div><div class="error">Cliente no encontrado.</div>`;
+  r.innerHTML=`<div class="code">${esc(x.code)}</div><div class="client">${esc(x.name)}</div><div class="small">DÍAS DE REPARTO</div><div class="days">${esc(x.days)}</div>${x.route?`<div class="route">${esc(x.route)}</div>`:""}`;
+}
+
+function showEditor(logged){
+  $("loginBox").style.display = cloud && !logged ? "block" : "none";
+  $("editor").style.display = (!cloud || logged) ? "block" : "none";
+  renderTable();
+}
+
+function renderTable(){
+  $("tbody").innerHTML=data.map(x=>`<tr data-code="${esc(x.code)}"><td><b>${esc(x.code)}</b></td><td>${esc(x.name)}</td><td>${esc(x.days)}</td><td>${esc(x.route||"")}</td></tr>`).join("");
+  document.querySelectorAll("#tbody tr").forEach(tr=>tr.onclick=()=>editRow(tr.dataset.code));
+}
+
+function editRow(code){
+  const x=data.find(v=>v.code===code); if(!x)return;
+  $("fCode").value=x.code;$("fName").value=x.name;$("fDays").value=x.days;$("fRoute").value=x.route||"";
+  window.scrollTo({top:$("admin").offsetTop-80,behavior:"smooth"});
+}
+
+function clearForm(){["fCode","fName","fDays","fRoute"].forEach(id=>$(id).value="");setStatus("");}
+
+function setStatus(msg,bad=false){$("status").textContent=msg;$("status").style.color=bad?"var(--red)":"var(--muted)";}
+
+async function save(){
+  const row={code:norm($("fCode").value),name:$("fName").value.trim(),days:$("fDays").value.trim().toUpperCase(),route:$("fRoute").value.trim()};
+  if(!row.code||!row.name||!row.days) return setStatus("Código, cliente y días son obligatorios.",true);
+  if(cloud){
+    const {error}=await supabase.from("delivery_routes").upsert(row,{onConflict:"code"});
+    if(error)return setStatus(error.message,true);
+    await loadCloud();
+  } else {
+    const i=data.findIndex(x=>x.code===row.code); if(i>=0)data[i]=row;else data.push(row);
+    data.sort((a,b)=>a.code.localeCompare(b.code)); localStorage.setItem("sh_routes",JSON.stringify(data)); renderTable();
+  }
+  setStatus("Guardado correctamente."); clearForm();
+}
+
+async function del(){
+  const code=norm($("fCode").value); if(!code)return;
+  if(!confirm("¿Eliminar "+code+"?"))return;
+  if(cloud){
+    const {error}=await supabase.from("delivery_routes").delete().eq("code",code);
+    if(error)return setStatus(error.message,true);
+    await loadCloud();
+  } else {
+    data=data.filter(x=>x.code!==code); localStorage.setItem("sh_routes",JSON.stringify(data)); renderTable();
+  }
+  clearForm();setStatus("Eliminado.");
+}
+
+$("searchBtn").onclick=search;$("searchCode").onkeydown=e=>{if(e.key==="Enter")search()};
+$("toggleAdmin").onclick=()=>{$("admin").style.display=$("admin").style.display==="block"?"none":"block";};
+$("saveBtn").onclick=save;$("clearBtn").onclick=clearForm;$("deleteBtn").onclick=del;
+$("loginBtn").onclick=async()=>{if(!cloud)return; const {error}=await supabase.auth.signInWithPassword({email:$("email").value,password:$("password").value}); if(error)setStatus(error.message,true);};
+$("logoutBtn").onclick=async()=>{if(cloud)await supabase.auth.signOut(); else $("admin").style.display="none";};
+boot();
+</script>
+</body>
+</html>
