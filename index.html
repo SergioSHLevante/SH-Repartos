@@ -104,11 +104,21 @@ async function loadCloud(){
 
 function search(){
   const code=norm($("searchCode").value);
-  const r=$("result"); r.style.display="block";
-  if(!code) return r.innerHTML='<div class="error">Introduce un código.</div>';
-  const x=data.find(v=>norm(v.code)===code);
-  if(!x) return r.innerHTML=`<div class="code">${esc(code)}</div><div class="error">Cliente no encontrado.</div>`;
-  r.innerHTML=`<div class="code">${esc(x.code)}</div><div class="client">${esc(x.name)}</div><div class="small">DÍAS DE REPARTO</div><div class="days">${esc(x.days)}</div>${x.route?`<div class="route">${esc(x.route)}</div>`:""}`;
+  const r=$("result"); 
+  r.style.display="block";
+
+  if(!code) 
+    return r.innerHTML=`<div class="error">Introduce un código o nombre de cliente.</div>`;
+
+  const x=data.find(v=>{
+    const texto=norm(`${v.code} ${v.name}`);
+    return code.split(/\s+/).every(p=>texto.includes(p));
+  });
+
+  if(!x) 
+    return r.innerHTML=`<div class="code">${esc(code)}</div><div class="error">Cliente no encontrado.</div>`;
+
+  r.innerHTML=`<div class="code">${esc(x.code)}</div><div class="client">${esc(x.name)}</div><div class="small">DÍAS DE REPARTO: ${esc(x.days)}</div>`;
 }
 
 function showEditor(logged){
