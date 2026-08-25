@@ -111,8 +111,8 @@ function search(){
     return r.innerHTML=`<div class="error">Introduce un código o nombre de cliente.</div>`;
 
   const x=data.find(v=>{
-    const texto=norm(`${v.code} ${v.name}`);
-    return code.split(/\s+/).every(p=>texto.includes(p));
+  const texto=norm(JSON.stringify(v));
+  return code.split(/\s+/).every(p=>texto.includes(norm(p)));
   });
 
   if(!x) 
