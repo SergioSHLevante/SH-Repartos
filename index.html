@@ -28,9 +28,9 @@ table{width:100%;border-collapse:collapse;margin-top:18px} th,td{text-align:left
 <body>
 <header><div class="bar"><div class="brand"><span>SH</span> LEVANTE · REPARTOS</div><div id="modePill" class="pill">Modo local</div></div></header>
 <main>
-  <section class="hero"><h1>¿Cuándo se reparte?</h1><div class="sub">Introduce el código de cliente.</div></section>
+  <section class="hero"><h1>¿Cuándo se reparte?</h1><div class="sub">Busca por código o por cualquier palabra del nombre.</div></section>
   <section class="card">
-    <div class="searchrow"><input id="searchCode" placeholder="Ej. C852" autocomplete="off"><button class="primary" id="searchBtn">Buscar</button></div>
+    <div class="searchrow"><input id="searchCode" placeholder="Ej. C852, HUNDRED, QUART..." autocomplete="off"><button class="primary" id="searchBtn">Buscar</button></div>
     <div id="result" class="result"></div>
     <div class="admin-link"><button class="linkbtn" id="toggleAdmin">Administrar repartos</button></div>
   </section>
@@ -72,7 +72,12 @@ let supabase = null;
 let cloud = false;
 
 const $=id=>document.getElementById(id);
-const norm=s=>String(s||"").trim().toUpperCase().replace(/\s+/g,"");
+const norm=s=>String(s||"")
+  .normalize("NFD")
+  .replace(/[\u0300-\u036f]/g,"")
+  .toUpperCase()
+  .trim()
+  .replace(/\s+/g," ");
 const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[m]));
 
 async function boot(){
@@ -103,22 +108,35 @@ async function loadCloud(){
 }
 
 function search(){
-  const code=norm($("searchCode").value);
-  const r=$("result"); 
-  r.style.display="block";
+  const query=norm($("searchCode").value);
+  const r=$("result");
 
-  if(!code) 
-    return r.innerHTML=`<div class="error">Introduce un código o nombre de cliente.</div>`;
+  if(!query){
+    r.style.display="none";
+    r.innerHTML="";
+    return;
+  }
 
-  const x=data.find(v=>{
-  const texto=norm(JSON.stringify(v));
-  return code.split(/\s+/).every(p=>texto.includes(norm(p)));
+  const terms=query.split(" ").filter(Boolean);
+
+  const matches=data.filter(v=>{
+    const searchable=norm(`${v.code} ${v.name}`);
+    return terms.every(term=>searchable.includes(term));
   });
 
-  if(!x) 
-    return r.innerHTML=`<div class="code">${esc(code)}</div><div class="error">Cliente no encontrado.</div>`;
+  r.style.display="block";
 
-  r.innerHTML=`<div class="code">${esc(x.code)}</div><div class="client">${esc(x.name)}</div><div class="small">DÍAS DE REPARTO: ${esc(x.days)}</div>`;
+  if(!matches.length){
+    return r.innerHTML=`<div class="code">${esc(query)}</div><div class="error">Cliente no encontrado.</div>`;
+  }
+
+  r.innerHTML=matches.map(x=>`
+    <div style="padding:14px 0;border-bottom:1px solid var(--line)">
+      <div class="code">${esc(x.code)}</div>
+      <div class="client" style="font-size:22px;margin-bottom:8px">${esc(x.name)}</div>
+      <div class="small">DÍAS DE REPARTO: <b>${esc(x.days || "INDISTINTO")}</b>${x.route ? ` · ${esc(x.route)}` : ""}</div>
+    </div>
+  `).join("");
 }
 
 function showEditor(logged){
@@ -169,7 +187,9 @@ async function del(){
   clearForm();setStatus("Eliminado.");
 }
 
-$("searchBtn").onclick=search;$("searchCode").onkeydown=e=>{if(e.key==="Enter")search()};
+$("searchBtn").onclick=search;
+$("searchCode").onkeydown=e=>{if(e.key==="Enter")search()};
+$("searchCode").oninput=search;
 $("toggleAdmin").onclick=()=>{$("admin").style.display=$("admin").style.display==="block"?"none":"block";};
 $("saveBtn").onclick=save;$("clearBtn").onclick=clearForm;$("deleteBtn").onclick=del;
 $("loginBtn").onclick=async()=>{if(!cloud)return; const {error}=await supabase.auth.signInWithPassword({email:$("email").value,password:$("password").value}); if(error)setStatus(error.message,true);};
