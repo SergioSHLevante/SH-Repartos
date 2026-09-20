@@ -59,7 +59,7 @@ table{width:100%;border-collapse:collapse;margin-top:18px} th,td{text-align:left
         <button class="secondary" id="logoutBtn">Salir</button>
       </div>
       <div id="status" class="status"></div>
-      <div style="overflow:auto"><table><thead><tr><th>Código</th><th>Cliente</th><th>Días</th><th>Ruta</th></tr></thead><tbody id="tbody"></tbody></table></div>
+      <div style="overflow:auto"><table><thead><tr><th>Código</th><th>Cliente</th><th>Días</th><th>Ruta</th><th>Preparación</th></tr></thead><tbody id="tbody"></tbody></table></div>
     </div>
   </section>
 </main>
@@ -101,7 +101,7 @@ async function boot(){
 }
 
 async function loadCloud(){
-  const {data:rows,error}=await supabase.from("delivery_routes").select("code,name,days,route").order("code");
+  const {data:rows,error}=await supabase.from("delivery_routes").select("code,name,days,route,preparation").order("code");
   if(error) return setStatus("Error cargando datos: "+error.message,true);
   data=rows||[];
   renderTable();
@@ -135,6 +135,7 @@ function search(){
       <div class="code">${esc(x.code)}</div>
       <div class="client" style="font-size:22px;margin-bottom:8px">${esc(x.name)}</div>
       <div class="small">DÍAS DE REPARTO: <b>${esc(x.days || "INDISTINTO")}</b>${x.route ? ` · ${esc(x.route)}` : ""}</div>
+      <div class="small">PREPARACIÓN: <b>${esc(x.preparation || "PAPEL")}</b></div>
     </div>
   `).join("");
 }
@@ -146,7 +147,7 @@ function showEditor(logged){
 }
 
 function renderTable(){
-  $("tbody").innerHTML=data.map(x=>`<tr data-code="${esc(x.code)}"><td><b>${esc(x.code)}</b></td><td>${esc(x.name)}</td><td>${esc(x.days)}</td><td>${esc(x.route||"")}</td></tr>`).join("");
+  $("tbody").innerHTML=data.map(x=>`<tr data-code="${esc(x.code)}"><td><b>${esc(x.code)}</b></td><td>${esc(x.name)}</td><td>${esc(x.days)}</td><td>${esc(x.route||"")}</td><td><b>${esc(x.preparation || "PAPEL")}</b></td></tr>`).join("");
   document.querySelectorAll("#tbody tr").forEach(tr=>tr.onclick=()=>editRow(tr.dataset.code));
 }
 
