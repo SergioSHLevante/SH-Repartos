@@ -50,7 +50,11 @@ table{width:100%;border-collapse:collapse;margin-top:18px} th,td{text-align:left
         <input id="fCode" placeholder="Código">
         <input id="fName" placeholder="Cliente">
         <input id="fDays" placeholder="Días (L-X, M-J...)">
-        <input id="fRoute" placeholder="Ruta opcional">
+        <input id="fRoute" placeholder="Pedido a">
+        <select id="fPreparation">
+  <option value="PAPEL">PAPEL</option>
+  <option value="KDS">KDS</option>
+</select>
       </div>
       <div class="actions">
         <button class="primary" id="saveBtn">Guardar</button>
@@ -59,7 +63,7 @@ table{width:100%;border-collapse:collapse;margin-top:18px} th,td{text-align:left
         <button class="secondary" id="logoutBtn">Salir</button>
       </div>
       <div id="status" class="status"></div>
-      <div style="overflow:auto"><table><thead><tr><th>Código</th><th>Cliente</th><th>Días</th><th>Ruta</th><th>Preparación</th></tr></thead><tbody id="tbody"></tbody></table></div>
+      <div style="overflow:auto"><table><thead><tr><th>Código</th><th>Cliente</th><th>Días</th><th>Pedido a</th><th>Preparación</th></tr></thead><tbody id="tbody"></tbody></table></div>
     </div>
   </section>
 </main>
@@ -154,6 +158,7 @@ function renderTable(){
 function editRow(code){
   const x=data.find(v=>v.code===code); if(!x)return;
   $("fCode").value=x.code;$("fName").value=x.name;$("fDays").value=x.days;$("fRoute").value=x.route||"";
+  $("fPreparation").value=x.preparation || "PAPEL";
   window.scrollTo({top:$("admin").offsetTop-80,behavior:"smooth"});
 }
 
@@ -162,7 +167,7 @@ function clearForm(){["fCode","fName","fDays","fRoute"].forEach(id=>$(id).value=
 function setStatus(msg,bad=false){$("status").textContent=msg;$("status").style.color=bad?"var(--red)":"var(--muted)";}
 
 async function save(){
-  const row={code:norm($("fCode").value),name:$("fName").value.trim(),days:$("fDays").value.trim().toUpperCase(),route:$("fRoute").value.trim()};
+  const row={code:norm($("fCode").value),name:$("fName").value.trim(),days:$("fDays").value.trim().toUpperCase(),route:$("fRoute").value.trim(),preparation:$("fPreparation").value};
   if(!row.code||!row.name||!row.days) return setStatus("Código, cliente y días son obligatorios.",true);
   if(cloud){
     const {error}=await supabase.from("delivery_routes").upsert(row,{onConflict:"code"});
