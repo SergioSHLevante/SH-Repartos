@@ -46,6 +46,7 @@ table{width:100%;border-collapse:collapse;margin-top:18px} th,td{text-align:left
       <div class="small" style="margin-top:8px">Con Supabase configurado, solo usuarios autenticados pueden modificar datos. En modo local, los cambios se guardan solo en este navegador.</div>
     </div>
     <div id="editor" style="display:none">
+      <input id="adminSearch" placeholder="Buscar cliente por código o nombre..." style="margin-bottom:12px">
       <div class="grid">
         <input id="fCode" placeholder="Código">
         <input id="fName" placeholder="Cliente">
@@ -151,7 +152,25 @@ function showEditor(logged){
 }
 
 function renderTable(){
-  $("tbody").innerHTML=data.map(x=>`<tr data-code="${esc(x.code)}"><td><b>${esc(x.code)}</b></td><td>${esc(x.name)}</td><td>${esc(x.days)}</td><td>${esc(x.route||"")}</td><td><b>${esc(x.preparation || "PAPEL")}</b></td></tr>`).join("");
+  const q = norm($("adminSearch")?.value || "");
+
+  const filtered = !q
+    ? data
+    : data.filter(x => {
+        const searchable = norm(`${x.code} ${x.name}`);
+        return q.split(" ").filter(Boolean).every(term => searchable.includes(term));
+      });
+
+  $("tbody").innerHTML=filtered.map(x=>`
+    <tr data-code="${esc(x.code)}">
+      <td><b>${esc(x.code)}</b></td>
+      <td>${esc(x.name)}</td>
+      <td>${esc(x.days)}</td>
+      <td>${esc(x.route||"")}</td>
+      <td><b>${esc(x.preparation || "PAPEL")}</b></td>
+    </tr>
+  `).join("");
+
   document.querySelectorAll("#tbody tr").forEach(tr=>tr.onclick=()=>editRow(tr.dataset.code));
 }
 
@@ -196,6 +215,7 @@ async function del(){
 $("searchBtn").onclick=search;
 $("searchCode").onkeydown=e=>{if(e.key==="Enter")search()};
 $("searchCode").oninput=search;
+$("adminSearch").oninput=renderTable;
 $("toggleAdmin").onclick=()=>{$("admin").style.display=$("admin").style.display==="block"?"none":"block";};
 $("saveBtn").onclick=save;$("clearBtn").onclick=clearForm;$("deleteBtn").onclick=del;
 $("loginBtn").onclick=async()=>{if(!cloud)return; const {error}=await supabase.auth.signInWithPassword({email:$("email").value,password:$("password").value}); if(error)setStatus(error.message,true);};
