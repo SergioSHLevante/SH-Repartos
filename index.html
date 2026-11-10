@@ -106,7 +106,7 @@ async function boot(){
 }
 
 async function loadCloud(){
-  const {data:rows,error}=await supabase.from("delivery_routes")..select("code,name,days,route,preparation,tip1,tip2,tip3,tip4").order("code");
+  const {data:rows,error}=await supabase.from("delivery_routes").select("code,name,days,route,preparation,tip1,tip2,tip3,tip4").order("code");
   if(error) return setStatus("Error cargando datos: "+error.message,true);
   data=rows||[];
   renderTable();
