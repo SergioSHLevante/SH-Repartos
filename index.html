@@ -23,6 +23,24 @@ button{border:0;border-radius:12px;padding:14px 18px;font-weight:800;cursor:poin
 table{width:100%;border-collapse:collapse;margin-top:18px} th,td{text-align:left;padding:10px;border-bottom:1px solid var(--line);font-size:14px} th{color:var(--muted);font-size:12px;text-transform:uppercase}
 .small{font-size:12px;color:var(--muted)} .status{margin-top:10px;font-size:13px;color:var(--muted)} .login{display:grid;grid-template-columns:1fr 1fr auto;gap:10px}
 @media(max-width:750px){.grid,.login{grid-template-columns:1fr} table{font-size:12px} th:nth-child(2),td:nth-child(2){max-width:160px}}
+/* SH REPARTOS 2.0 - Mejoras de lectura */
+
+.result .small {
+  font-size: 16px;
+  line-height: 1.6;
+  color: #26352d;
+  margin-top: 5px;
+}
+
+.result .small b {
+  color: #155c39;
+  font-weight: 800;
+}
+
+.result .client {
+  line-height: 1.25;
+  margin-bottom: 16px;
+}
 </style>
 </head>
 <body>
@@ -143,7 +161,11 @@ function search(){
 <div class="small">PEDIDO A: <b>${esc(x.route || "NO ESPECIFICADO")}</b></div>
       ${[x.tip1,x.tip2,x.tip3,x.tip4].some(Boolean) ? `<div class="small" style="margin-top:12px"><b>ESPECIFICACIONES</b></div>` : ""}
 
-${[x.tip1,x.tip2,x.tip3,x.tip4].filter(Boolean).map(t => `<div class="small">• ${esc(t)}</div>`).join("")}
+${[x.tip1,x.tip2,x.tip3,x.tip4].filter(Boolean).map(t => `
+  <div class="small" style="background:#f1f7f3;padding:10px 14px;margin-top:8px;border-left:4px solid #1f7a4d;border-radius:6px">
+    • ${esc(t)}
+  </div>
+`).join("")}
     </div>
   `).join("");
 }
